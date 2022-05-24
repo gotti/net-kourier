@@ -29,6 +29,7 @@ import (
 	extAuthService "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/ext_authz/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	httpOptions "github.com/envoyproxy/go-control-plane/envoy/extensions/upstreams/http/v3"
+	v32 "github.com/envoyproxy/go-control-plane/envoy/type/matcher/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
 	"github.com/kelseyhightower/envconfig"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -79,6 +80,7 @@ type config struct {
 	Timeout          int              `default:"2000"`
 	Protocol         extAuthzProtocol `default:"grpc"`
 	PathPrefix       string
+	AllowedHeader    string
 }
 
 func init() {
@@ -89,8 +91,6 @@ func init() {
 
 	var env config
 	envconfig.MustProcess("KOURIER_EXTAUTHZ", &env)
-
-  panic(env)
 
 	if !isValidExtAuthzProtocol(env.Protocol) {
 		err := fmt.Errorf("protocol %s is invalid, must be in %+v", env.Protocol, extAuthzProtocols)
@@ -219,6 +219,13 @@ func externalAuthZFilter(conf *config) *hcm.HttpFilter {
 				},
 				PathPrefix: conf.PathPrefix,
 				AuthorizationRequest: &extAuthService.AuthorizationRequest{
+					AllowedHeaders: &v32.ListStringMatcher{
+						Patterns: []*v32.StringMatcher{
+							{
+								MatchPattern: &v32.StringMatcher_Prefix{Prefix: conf.AllowedHeader},
+							},
+						},
+					},
 					HeadersToAdd: headers,
 				},
 			},

@@ -208,28 +208,46 @@ func externalAuthZFilter(conf *config) *hcm.HttpFilter {
 			},
 		}
 	case extAuthzProtocolHTTP, extAuthzProtocolHTTPS:
-		extAuthConfig.Services = &extAuthService.ExtAuthz_HttpService{
-			HttpService: &extAuthService.HttpService{
-				ServerUri: &core.HttpUri{
-					Uri: fmt.Sprintf("%s://%s", conf.Protocol, conf.Host),
-					HttpUpstreamType: &core.HttpUri_Cluster{
-						Cluster: extAuthzClusterName,
-					},
-					Timeout: timeout,
-				},
-				PathPrefix: conf.PathPrefix,
-				AuthorizationRequest: &extAuthService.AuthorizationRequest{
-					AllowedHeaders: &v32.ListStringMatcher{
-						Patterns: []*v32.StringMatcher{
-							{
-								MatchPattern: &v32.StringMatcher_Prefix{Prefix: conf.AllowedHeader},
-							},
-						},
-					},
-					HeadersToAdd: headers,
-				},
-			},
-		}
+    if conf.AllowedHeader == "" {
+      extAuthConfig.Services = &extAuthService.ExtAuthz_HttpService{
+        HttpService: &extAuthService.HttpService{
+          ServerUri: &core.HttpUri{
+            Uri: fmt.Sprintf("%s://%s", conf.Protocol, conf.Host),
+            HttpUpstreamType: &core.HttpUri_Cluster{
+              Cluster: extAuthzClusterName,
+            },
+            Timeout: timeout,
+          },
+          PathPrefix: conf.PathPrefix,
+          AuthorizationRequest: &extAuthService.AuthorizationRequest{
+            HeadersToAdd: headers,
+          },
+        },
+      }
+    } else {
+      extAuthConfig.Services = &extAuthService.ExtAuthz_HttpService{
+        HttpService: &extAuthService.HttpService{
+          ServerUri: &core.HttpUri{
+            Uri: fmt.Sprintf("%s://%s", conf.Protocol, conf.Host),
+            HttpUpstreamType: &core.HttpUri_Cluster{
+              Cluster: extAuthzClusterName,
+            },
+            Timeout: timeout,
+          },
+          PathPrefix: conf.PathPrefix,
+          AuthorizationRequest: &extAuthService.AuthorizationRequest{
+            AllowedHeaders: &v32.ListStringMatcher{
+              Patterns: []*v32.StringMatcher{
+                {
+                  MatchPattern: &v32.StringMatcher_Prefix{Prefix: conf.AllowedHeader},
+                },
+              },
+            },
+            HeadersToAdd: headers,
+          },
+        },
+      }
+    }
 	}
 
 	envoyConf, err := anypb.New(extAuthConfig)
